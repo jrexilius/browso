@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!----------------------------------------------------------------------------------------------
+    Browso:  A browser based preso template. This template can be used by shell scripts or manual
+             editing to turn a PPT deck into a self-guided, online presentation. It can be then be
+             hosted on any platform that serves HTML pages and associated content.
+
+    Why?:  Corona.  The need to give pitches without being in the same meeting room is really what
+           drove this.  The specific requirements that weren't met by other existing tools are:
+           - Office Power Point on the Mac fails badly at HTML export. But that is still the source
+             of existing decks, example templates, and a common editing tool. 
+           - Requiring other people to install video-conf malware du jour... err. "meeting apps"
+             is rude, unreliable, and adds friction. (Most) everyone has a browser and a phone.
+           - Asynchronous, self-guided presentation is a good option to have.  Think of it like
+             Netflix for presentations.  Your audience can consume on their schedule, not yours.
+           - Enable things the web can do, that Power Point can't: links to supporting material,
+             click-through wire-frames integrated into presentation, in-line capture of feedback or
+             questions, performance tracking, etc.
+
+    Current Features:
+      - mobile-swipe, keyboard, and mouse-click controls
+      - auto-play of presentation with configurable times per slide
+      - auot-play of slide specific audio (narration)
+      - per-slide notes sidebar, for supporting material, external links, etc.
+      - table of contents sidebar to jump to specific slides
+      - directly linkable slides for sharing, reference
+      - single HTML page, no libraries or externals dependencies
+      - minimal constraints, heavy commenting, native code to make editing as easy as possible
+
+    Planned Features:
+      - wire-frame or demo app click-through integration
+      - in-line questions/feedback dialogue (requires server component)
+      - perfromance tracking, telemetry, logging (requires server component)
+      - meeting mode, presenter driven click-through (requires server component)
+
+    Author: Jason Rexilius  -  pub@jasonrexilius.com  -  http://jasonrexilius.com/projects/browso
+
+    License:
+      This is free and unencumbered software released into the public domain.
+
+      Anyone is free to copy, modify, publish, use, compile, sell, or
+      distribute this software, either in source code form or as a compiled
+      binary, for any purpose, commercial or non-commercial, and by any
+      means.
+
+      In jurisdictions that recognize copyright laws, the author or authors
+      of this software dedicate any and all copyright interest in the
+      software to the public domain. We make this dedication for the benefit
+      of the public at large and to the detriment of our heirs and
+      successors. We intend this dedication to be an overt act of
+      relinquishment in perpetuity of all present and future rights to this
+      software under copyright law.
+
+      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+      EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+      MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+      IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+      OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+      ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+      OTHER DEALINGS IN THE SOFTWARE.
+
+      For more information, please refer to <https://unlicense.org>
+
+    Other Options:
+      https://github.com/jennschiffer/SimpleSlides
+      https://github.com/webslides/webslides/
+      https://github.com/mwichary/The-rectangle-behind-you/tree/master/simple-presentation
+      https://revealjs.com/
+      http://imakewebthings.com/deck.js/
+      https://chenhuijing.com/blog/html-slides-without-frameworks/#%F0%9F%91%9F
+      https://www.w3.org/Talks/Tools/Slidy2/#(2)
+
+    ----------------------------------------------------------------------------------------------->
+
+
+    <!-- replace with your title -->
+    <title> My Slide Show </title>
+
+
+    <!----------------------------------------------------------------------------------------------
+      Bare minimum styles for controls, deck, and slides. Named classes prefixed with "bso" to
+      avoid conflict with added styles. Modify with caution, add own styles as desired.
+    ----------------------------------------------------------------------------------------------->
+
+    <style media="screen" type="text/css">
+
+      /* this base style is purely optional, change as desired */
+      html {
+        background-color: #FFFFFF;
+        font-family: "Open Sans", sans-serif;
+        font-size: 14pt;
+        font-weight: 300;
+        color: #222222;
+        min-height: 100%;
+      }
+
+      /*---- BEGIN BSO CORE STYLES, edit with caution ----*/
+      div.bso-show {
+        max-width: 1152px;
+        min-height: 100%;
+        margin: 0 auto;
+        display: block;
+      }
+      div.bso-controls {
+        display: grid;
+        grid: ". . . . . .";
+        grid-gap: 0px;
+        padding: 0px;
+        margin: 0 auto;
+        min-width: 200px;
+        height: 20px;
+      }
+      a.bso-controls-a {
+        color: #222222;
+        font-size: 10pt;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      div.bso-control-left {
+        text-align: left;
+        display: flex;
+        align-items: center;
+      }
+      div.bso-control-center {
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      div.bso-control-right {
+        text-align: right;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+      div.bso-deck {
+        min-height: 100%;
+      }
+      div.bso-slide {
+        display: none;
+      }
+      img.bso-slide {
+        max-width: 100%;
+        max-height: calc( 100vh - 20px);
+        display: block;
+      }
+      video.bso-slide {
+        max-width: 100%;
+        max-height: calc( 100vh - 20px);
+        display: block;
+      }
+      div.bso-toc {
+        height: 100%; 
+        width: 0; /* 0 width - change this with JavaScript */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Stay on top */
+        top: 0;
+        left: 0;
+        background-color: #EEEEF2; 
+        overflow-x: hidden; /* Disable horizontal scroll */
+        padding-top: 0px; 
+        transition: 0.5s; /* 0.5 second transition effect to slide in the sidepanel */
+      }
+      div.bso-notes {
+        height: 100%; 
+        width: 0; /* 0 width - change this with JavaScript */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Stay on top */
+        top: 0;
+        right: 0;
+        background-color: #EEEEF2; 
+        overflow-x: hidden; /* Disable horizontal scroll */
+        padding-top: 0px; 
+        transition: 0.5s; /* 0.5 second transition effect to slide in the sidepanel */
+      }
+      div.bso-status { 
+        height: 15px; 
+        font-size: 10pt;
+        position: fixed; 
+        bottom:0%;
+        width:99%; 
+        background-color: #EEEEF2; 
+        opacity: 1;
+        display: grid;
+        grid: ". . . . .";
+        grid-gap: 0px;
+        padding: 0px;
+        margin: 0 auto;
+        min-width: 200px;
+      }
+      div.bso-status-left {
+        text-align: left;
+        display: flex;
+        align-items: center;
+      }
+      div.bso-status-center {
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      div.bso-status-right {
+        text-align: right;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+      }
+      a.bso-status-a {
+        color: #222222;
+        font-size: 10pt;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      a.bso-tutorial-a {
+        color: #2222BB;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      /*---- END BSO CORE STYLES ----*/
+
+    </style>
+
+
+    <!----------------------------------------------------------------------------------------------
+      The slideshow is driven by this javascript. A few key configuration variables control default
+      behaviour, while the overall slide show is largely determined at run-time from inspecting the
+      "slide" divs inside the "deck" parent div. Replacing the body.onLoad, document.onKeyPress,
+      EventListener('touchstart'), and EventListener('touchmove') functions will break things if
+      not careful.  Caution should also be taken with setTimeout and setInterval calls.
+    ----------------------------------------------------------------------------------------------->
+
+    <script language="javascript" type="text/javascript">
+
+
+      //--------------------------------------------------------------------------------------------
+      // configuration variables
+      //--------------------------------------------------------------------------------------------
+      var autoPlay = "off";  // "off"||"on", timed automatic next slide
+      var autoAudio = "off"; // "off"||"on", automatic play of slide audio track
+      var autoMovie = "off"; // "off"||"on", automatic play of slide movies
+      var autoReset = "on";  // "on"||"off", start show over after last slide
+      var slideTime = 5;     // int, default seconds for each slide in autoPlay
+
+
+      //--------------------------------------------------------------------------------------------
+      // global state variables
+      //--------------------------------------------------------------------------------------------
+      var deck = Object();   // determined onLoad
+      var numSlides = 0;     // int, determined onLoad
+      var curSlide = 0;      // int, dynamic
+      var showToC = false;   // false||true, toggled by user
+      var showNotes = false; // false||true, toggled by user
+      var showCtl = true;    // true||false, toggled by user
+      var toc = {};          // determined onLoad
+      var timerID = 0;       // set onLoad, autoPlay
+
+
+      //--------------------------------------------------------------------------------------------
+      // controler images, b64 data strings, these can be replaced with own images if desired.
+      // ref: https://www.base64-image.de/
+      //--------------------------------------------------------------------------------------------
+      var prev_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAUCAYAAABWMrcvAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5AcJExoZRA8vnAAAAM1JREFUOMuV0T1KxGAUBdBj8o2LsXQpNkJwtPEHVIxGkGEgtftyFW7ASlDGwTGOA9q8Vn25TVLkcB835HKNB+wkvzfHF5bYz4DLACucZ0CLT3yjyYBjDAHusmAVoM2AgwAD7jOgwRs2McDv6bpuu5TSxKSbmPjv1HX9WFXVOsBt5qQqnhPU2EL5V/V9PymlXOAZa8yMyBSvsdxVNKdOPcICHwHTOY0l3+O9yjaeBVriZExjG2cucJhtrAMOMdB0TOMsfsUL9rKo4AZP2IUffr81H94DIqsAAAAASUVORK5CYII=";
+      var toc_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeAQMAAAAB/jzhAAAABlBMVEUAAAAAAAClZ7nPAAAAAXRSTlMAQObYZgAAABVJREFUCNdjYIAD+///PyARaICusgBvdC+kSD1UZgAAAABJRU5ErkJggg==";
+      var audio_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAeCAMAAACR41cYAAAAolBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgESU6AAAANXRSTlMABfsDfvcI8ePQHxju1XJlYgrbv7m1l4JaVUtFJBMM59/YybGto4d5XEE0Kw/FqJBrPZqZFWF77A8AAAF/SURBVDjLfZNpe4JADIQDW8D7RKsieN9Ha9v5/3+tE0Cp60PzhYW8zCbZWbHCEd/Jl1+9iRh5CWMkCtoEmawD6HBpIyKfwHue2BGKbIivQ7h448Joqg0ENTFWKSFcL2UYxFrAxVKpNeHlOpMWPxgZPJdk5NYgkjJSdxH6TE49LDJRY0hIR/M5020CfZXeqtCjpK2mc8aXuJn1VwvIEkq6XT++wiWSMw6nM4M3JbTR1kbzSqUyb6hIwVBpDHxnj5Es7qknhrFE5Sy62YdU4WrAYtLh3MQwv1IGjFfmkM1mgGUZY3Q2OxZ0RaOc0UrIDIFy5ohUZ4VZec3ses9HiEtZ7zo978RT6WGtM2RYM8yOc8kdTx62/OOcnJOftXUW0tcB++qzwtVvTBc6MZG1GHXQLC6cvLe80UvIHl1s/trwEMAtPFat65Yr4GB71X14VX2v2qFlaGfw7Pkj7X0SU3J3HG0tCgBeyP/uYAu6VhWbihrFXaakxivk3P8c9saZyi+SZ0pbsr0VLQAAAABJRU5ErkJggg==";
+      var mute_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAeCAMAAACR41cYAAAAolBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgESU6AAAANXRSTlMABPz57LyNilH2l6N9FNaRh1c80cZ3ZUcuIx0YC/Dk27azrpSCXyolDw2pnnJrQx9MSjLIxwkIshoAAAGhSURBVDjLfZKHbuMwEESHapasYhUXWe41Lmcnubv5/1/LkoojWFEygIiF8HaGXBLdUgq/anyvsXbbrm9+6iXjAK+R34IUXsgaUsgX7CEl10e0FJGeoaulriayOn47rkfuAcz+MRAfxPuA1jMkdZ/8A2S0bGEU8O7QObahkLwBKYUxZ38PuMaT5lBb8mD8enVXRGaNUV2dXdo+cGUK+GOFU/JsdCrLGeIhFxPAvWJqcwyMuCihHi6TVcDkBVVBJ0f1hvmQSYy/gZDqsZmEoqLCccVlqZt80sep4KAZs0NbzvxfWpdcTaEQrxgBG26/mKlDi7TpzpE7LGaAGrIPhHRbjHxb2dqCwxjK5a6TkSUE/NrP6umsS7OfB2PphAO5UXi741zQ+2JeHQa2bRlI2m/UfgplwEMz6JCss4SL9PC0H9KnWz1H20voGshc/570dOgabXmfUAYMaj8fqhOyzXCv2u+7lLSbbae6vJDjnyDzDnGG2tDKuqGdZHnIkhwnl8EdqgvqU5g9E/OcJLXbSZjZbaJktKMK6I4b5Y/yd4lLQ30ADqszVhpiiDUAAAAASUVORK5CYII=";
+      var play_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAeCAMAAAAIG46tAAAAZlBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBQUAAAAAAAAAAAAHBwcAAAAAAAABAQEAAAAAAAAAAAAAAAACAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEAAAAAAAADAwMAAAB0QIMsAAAAIXRSTlMAA/pV93i26wfOsh4K79K4ljk1Ihq4T+LaupmXk29fWyndVN8QAAAAvklEQVQoz5XT2RKCMAwF0FhEyi6yuC/5/580NMzc6WCt8pY5Qy6kKVHfE20o8Dzruw1ywpxPomAPDXNxAPs4q7kNwp+QecucpRXYQzbCeULojcxTLi9L8xbRwMKmmett9qWwjyNReTFeNHA3l91ZoxuNBmqZNBo9dq4Gul7VEs0aDVQeruyGUqdWSuDCr0L5+CBkOrMBXLX96YNa/1da/EpkCOvxRQcfPzIc9gRarQk2NL5g8dVE2F/X4etFegNJbRp4urdFvgAAAABJRU5ErkJggg==";
+      var pause_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5AcJEyIezfQGxAAAAEdJREFUOMtjYKAyYMQith+Nf4GBgaEQyu5nYGAwQJN3JGTJfzS8H80ydHkUwERtL48aOGrgqIGjBtLHQBYsYgewFLDY2PQBAIl8DvqY5cJ8AAAAAElFTkSuQmCC";
+      var pause_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAANElEQVRIx+3PsQ0AMAgDQcj+O8MGkVylyH1roRNVv9WXbYK7SY3z6mMwGAwGg8FgMBisvAWTRQI0+LBTfgAAAABJRU5ErkJggg==";
+      var notes_img = " data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAcUlEQVQ4y82UOw7AIAxD8xD3v7K7oqrkU2hFJobIsZ1gzEy2sZptrj68WcTS5wwt8JNJDx4gjhxl7OlJJbzdspLyrcLwDoozgAiQhHda8ZCqn807UscGPbAP71DBEDKA1e/Hr+FQkTbd9th8ZtpwfGJfD0MeMNyBWE4AAAAASUVORK5CYII=";
+      var next_img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAUCAYAAABWMrcvAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5AcJEyEzowYJcgAAARhJREFUOMuN07tKA0EYhuEnyWZRRMHbCOlsFEE0oL2NrWKjjYJYSAKW3pTXIBhUULGyCHgWFTzr2vx22c3+7cw732FmaqhgGvsYxRE+DJgqFnGJJ7SRFgE1ZLjAI2ZC9R0n+MyDBHiOmwAX8IID/OZB8B15XjGHqQBP8ZUH/Sue4g6zmMc9DmOtLyRO7UaeFiYj71m46QuJHCfRZivsXuMYWa2g2c+wVQlosl6vZ41G41yJGcMusmq1miVJ0k1KQD9h961f/XmvpRPV99I0XW02m+NFwDA28RAlLJdR2cMzrrAy6D0OYTsu8xHrZRTaEf4Wa3FI7qRhIwtbW2UUNiL0QxQwXLS5giX0otpOVG0QNBHffQcjg4A/Tp1NuMBVzxgAAAAASUVORK5CYII=";
+
+
+      //--------------------------------------------------------------------------------------------
+      // core behaviour functions
+      //--------------------------------------------------------------------------------------------
+
+      // only returns valid integer following URL hash "#"
+      function getStartSlide(){
+        var goSlide = 0;
+        var qryStr = window.location.hash.substr(1);
+        var reqSlide = parseInt(qryStr,10);
+        if( /^\d+$/.test(reqSlide) ){
+          goSlide = reqSlide;
+        }
+        // ensure requested slide is within range
+        if (goSlide > window.numSlides || goSlide < 0) {
+          goSlide = 0;
+        }
+        return goSlide;
+      }
+
+
+      // validates that there is a deck to work with
+      // it demands that there be an element "deck" with at least one "slide"
+      function checkDeck(){
+        var foundDeck = document.getElementById("deck");
+        if (!foundDeck){
+          console.log("No element deck found");
+          alert("Cant find deck");
+          return false;
+        }
+        var hasContents = document.getElementById("deck").hasChildNodes();
+        if (!hasContents){
+          console.log("Deck is empty");
+          alert("Deck is empty");
+          return false;
+        }
+        var hasSlides = false;
+        var slides = document.getElementById("deck").children;
+        var numSlides = slides.length;
+        for (i = 0; i < numSlides; i++){
+          if (slides[i].id.startsWith("slide")){
+            hasSlides = true;
+          }
+        }
+        if (!hasSlides){
+          console.log("No slides in deck");
+          alert("No slides in deck");
+          return false;
+        }
+        return true;
+      }
+
+
+      // check for controls interface
+      // it demands that there be an element "controls" with at least one "ctl"
+      function checkControls(){
+        var foundControls = document.getElementById("controls");
+        if (!foundControls){
+          console.log("No element controls found");
+          alert("Cant find controls");
+          return false;
+        }
+        var hasContents = document.getElementById("controls").hasChildNodes();
+        if (!hasContents){
+          console.log("Controls are empty");
+          alert("Controls are empty");
+          return false;
+        }
+        var hasControls = false;
+        var controls = document.getElementById("controls").children;
+        var numCtls = controls.length;
+        for (i = 0; i < numCtls; i++){
+          if (controls[i].id.startsWith("ctl")){
+            hasControls = true;
+          }
+        }
+        if (!hasControls){
+          console.log("No controls in bar");
+          alert("No controls in bar");
+          return false;
+        }
+        return true;
+      }
+
+
+      // build notes section for current slide, expected to be from a hidden element
+      // within the slide with the "-notes" suffix after the slideID i.e. "slide3-notes"
+      function buildNotes(){
+        var idStr = window.deck[window.curSlide].getAttribute("id");
+        var notesID = idStr + "-notes";
+        var notes = '';
+        if ( document.getElementById(notesID) ){
+          notes = document.getElementById(notesID).innerHTML;
+        }
+        document.getElementById("notes-txt").innerHTML = notes;
+        if (notes) {
+          document.getElementById("ctl-notes-a").style.color="#222222";
+          document.getElementById("notes-img").style.opacity="1";
+
+        }else{
+          document.getElementById("ctl-notes-a").style.color="#AAAAAA";
+          document.getElementById("notes-img").style.opacity="0.5";
+        }
+        return;
+      }
+
+
+      // build Table of Contents (slide list), it attempts to use the "title" tag from each
+      // slide, then falls back to the "id" tag, failing that, the slide and sequence number
+      function buildToC(){
+        var titleStr = "";
+        var node = document.createElement("li");
+        var link = document.createElement('a');
+        for (i = 0; i < window.deck.length; i++) {
+          node = document.createElement("li");
+          link = document.createElement('a');
+          if ( window.deck[i].hasAttribute("title") ){
+            titleStr = window.deck[i].getAttribute("title");
+          }else if ( window.deck[i].hasAttribute("id") ){
+            titleStr = window.deck[i].getAttribute("id");
+          }else {
+            titleStr = "slide" + i;
+          }
+          linkText = document.createTextNode(titleStr);
+          link.href = "javascript:jumpTo('" + i + "');";
+          link.appendChild(linkText);
+          node.appendChild(link);
+          node.style.margin = "10px 0";
+          document.getElementById("toc-list").appendChild(node);
+        }
+        return;
+      }
+
+
+      // apply display modifications for current slide
+      function initSlideDisplay(){
+        var curSlideAudio = window.deck[window.curSlide].id + '-audio';
+        var curSlideMovie = window.deck[window.curSlide].id + '-movie';
+        if (autoAudio == "on") {
+          if( document.getElementById(curSlideAudio) ){
+            document.getElementById(curSlideAudio).currentTime = 0;
+            document.getElementById(curSlideAudio).play();
+          }
+        }
+        if (autoMovie == "on") {
+          if( document.getElementById(curSlideMovie) ){
+            document.getElementById(curSlideMovie).currentTime = 0;
+            document.getElementById(curSlideMovie).play();
+          }
+        }
+        var titleStr = window.deck[window.curSlide].getAttribute("title");
+        if ( !titleStr ){
+          titleStr = window.deck[window.curSlide].id;
+        }
+        if ( !titleStr ){
+          titleStr = "slide";
+        }
+        document.title = titleStr;
+        if (window.autoPlay == "on"){
+          document.getElementById("play-img").src=play_img;
+          document.getElementById("play-stat").innerHTML = "playing";
+        }else{
+          document.getElementById("play-img").src=pause_img;
+          document.getElementById("play-stat").innerHTML = "paused";
+        }
+        if (window.autoAudio == "on"){
+          document.getElementById("audio-img").src=audio_img;
+          document.getElementById("audio-stat").innerHTML = "audible";
+        }else{
+          document.getElementById("audio-img").src=mute_img;
+          document.getElementById("audio-stat").innerHTML = "muted";
+        }
+        buildNotes();
+        return;
+      }
+
+
+      // go to next slide
+      function nextSlide(){
+        var nextSlide = 0;
+        var curSlideAudio = '';
+        var curSlideMovie = '';
+        if (window.curSlide < window.numSlides - 1) {
+          nextSlide = window.curSlide + 1;
+          curSlideAudio = window.deck[window.curSlide].id + '-audio';
+          curSlideMovie = window.deck[window.curSlide].id + '-movie';
+          if( document.getElementById(curSlideAudio) ){
+            document.getElementById(curSlideAudio).pause();
+          }
+          if( document.getElementById(curSlideMovie) ){
+            document.getElementById(curSlideMovie).pause();
+          }
+          window.deck[window.curSlide].style.display = "none";
+          window.deck[nextSlide].style.display = "block";
+          window.curSlide = nextSlide;
+          window.location.hash = nextSlide;
+          initSlideDisplay();
+          startTimer();
+        // last slide, reset to beginning
+        }else{
+          window.clearInterval(window.timerID);
+          window.autoPlay = "off";
+          window.curSlide = 0;
+          initDeckDisplay();
+        }
+        return;
+      }
+
+
+      // go to previous slide
+      function prevSlide(){
+        var nextSlide = 0;
+        var curSlideAudio = '';
+        var curSlideMovie = '';
+        if (window.curSlide > 0) {
+          nextSlide = window.curSlide - 1;
+          curSlideAudio = window.deck[window.curSlide].id + '-audio';
+          curSlideMovie = window.deck[window.curSlide].id + '-movie';
+          if( document.getElementById(curSlideAudio) ){
+            document.getElementById(curSlideAudio).pause();
+          }
+          if( document.getElementById(curSlideMovie) ){
+            document.getElementById(curSlideMovie).pause();
+          }
+          window.deck[window.curSlide].style.display = "none";
+          window.deck[nextSlide].style.display = "block";
+          window.curSlide = nextSlide;
+          window.location.hash = nextSlide;
+          initSlideDisplay();
+        }
+        return;
+      }
+
+      // jump to specific slide
+      function jumpTo(slideTo){
+        var curSlideAudio = window.deck[window.curSlide].id + '-audio';
+        var curSlideMovie = window.deck[window.curSlide].id + '-movie';
+        if( document.getElementById(curSlideAudio) ){
+          document.getElementById(curSlideAudio).pause();
+        }
+        if( document.getElementById(curSlideMovie) ){
+          document.getElementById(curSlideMovie).pause();
+        }
+        window.deck[window.curSlide].style.display = "none";
+        window.deck[slideTo].style.display = "block";
+        window.curSlide = Number(slideTo);
+        window.location.hash = slideTo;
+        window.autoPlay = "off";
+        window.clearInterval(window.timerID);
+        initSlideDisplay();
+        return;
+      }
+
+      // initialize deck display
+      function initDeckDisplay(){
+        for (i = 0; i < window.deck.length; i++) {
+          window.deck[i].style.display = "none";
+        }
+        window.deck[window.curSlide].style.display = "block";
+        window.location.hash = window.curSlide;
+        if (window.showCtl) {
+          document.getElementById("toggle-ctl").innerHTML = "hide menu";
+        }
+        initSlideDisplay();
+        return;
+      }
+
+
+      // start autoPlay timer, it will bail if autoPlay is off
+      function startTimer(){
+        var timer = 0;
+        if ( window.autoPlay != "on" ){
+          return;
+        }
+        if ( window.deck[window.curSlide].hasAttribute("data-timer") ){
+          timer = window.deck[window.curSlide].getAttribute("data-timer") * 1000;
+        }else{
+          timer = window.slideTime * 1000;
+        }
+        if( timer > 0 ){
+          window.timerID = setTimeout(nextSlide, timer);
+        }
+        return;
+      }
+
+
+      // toggle display of slide table of contents
+      function toggleToC(){
+        if (window.showToC) {
+          window.showToC = false;
+          document.getElementById("toc").style.width = "0px";
+        }else{
+          window.showToC = true;
+          document.getElementById("toc").style.width = "200px";
+        }
+        return;
+      }
+
+      // toggle display of slide table of contents
+      function toggleNotes(){
+        if (window.showNotes) {
+          window.showNotes = false;
+          document.getElementById("notes").style.width = "0px";
+        }else{
+          window.showNotes = true;
+          document.getElementById("notes").style.width = "200px";
+        }
+        return;
+      }
+
+      // toggle auto play of slides
+      function togglePlay(){
+        if (window.autoPlay == "on"){
+          window.autoPlay = "off";
+          document.getElementById("play-img").src=pause_img;
+          document.getElementById("play-stat").innerHTML = "paused";
+          window.clearInterval(window.timerID);
+        }else{
+          window.autoPlay = "on";
+          document.getElementById("play-img").src=play_img;
+          document.getElementById("play-stat").innerHTML = "playing";
+          startTimer();
+        }
+        return;
+      }
+
+      // toggle display of slide table of contents
+      function toggleCtl(){
+        if (window.showCtl) {
+          window.showCtl = false;
+          document.getElementById("controls").style.display = "none";
+          document.getElementById("toggle-ctl").innerHTML = "show menu";
+        }else{
+          window.showCtl = true;
+          document.getElementById("controls").style.display = "grid";
+          document.getElementById("toggle-ctl").innerHTML = "hide menu";
+        }
+        return;
+      }
+
+      // toggle auto play audio
+      function toggleAudio(){
+        if (window.autoAudio == "on"){
+          window.autoAudio = "off";
+          window.autoMovie = "off";
+          document.getElementById("audio-img").src=mute_img;
+          document.getElementById("audio-stat").innerHTML = "muted";
+        }else{
+          window.autoAudio = "on";
+          window.autoMovie = "on";
+          document.getElementById("audio-img").src=audio_img;
+          document.getElementById("audio-stat").innerHTML = "audible";
+        }
+        return;
+      }
+
+
+      //--------------------------------------------------------------------------------------------
+      // startShow main function is expected to be triggered by body.onLoad
+      //--------------------------------------------------------------------------------------------
+
+      function startShow(){
+
+        // bail if no deck or controls
+        if ( !checkDeck() || !checkControls() ){
+          return;
+        }
+
+        // initialize state variables
+        window.deck = document.getElementById("deck").children;
+        window.numSlides = window.deck.length;
+        window.curSlide = getStartSlide();
+        buildToC();
+
+        // if requested specific slide, disable auto content for user
+        if (window.curSlide > 0){
+          window.autoPlay = "off";
+        }
+
+        // start the show!
+        tutorialPrompt();
+        initDeckDisplay();
+        startTimer();
+
+        return;
+      }
+
+
+      //--------------------------------------------------------------------------------------------
+      // Handle user control input. 
+      //--------------------------------------------------------------------------------------------
+
+      function userCmd(cmd){
+
+        // next slide
+        if (cmd == "next") {
+          window.autoPlay = "off";
+          window.clearInterval(window.timerID);
+          nextSlide();
+
+        // previous slide
+        } else if (cmd == "prev") {
+          window.autoPlay = "off";
+          window.clearInterval(window.timerID);
+          prevSlide();
+
+        // show/hide Table of Contents side panel
+        } else if (cmd == "toc") {
+          toggleToC();
+
+        // toggle autoPlay setting
+        } else if (cmd == "play") {
+          togglePlay();
+
+        // toggle autoAudio setting
+        } else if (cmd == "audio") {
+          toggleAudio();
+
+        // show/hide Notes side panel
+        } else if (cmd == "notes") {
+          toggleNotes();
+
+        // show/hide Controls menu bar
+        } else if (cmd == "ctl") {
+          toggleCtl();
+
+        // reset slide show to beginning
+        } else if (cmd == "reset") {
+          window.autoPlay = "off";
+          window.curSlide = 0;
+          initDeckDisplay();
+        }
+
+        return;
+      }
+
+
+      //--------------------------------------------------------------------------------------------
+      // keyboard and mobile controls (hotkeys and swipe)
+      // ref: http://gcctech.org/csc/javascript/javascript_keycodes.htm
+      // test: https://keycode.info/
+      // swipe from: https://stackoverflow.com/users/7852/givanse
+      //--------------------------------------------------------------------------------------------
+
+      // keyboard hot keys
+      document.onkeydown = function(e) {
+        switch (e.keyCode) {
+          case 8:
+            userCmd("prev");
+            break;
+          case 37:
+            userCmd("prev");
+            break;
+          case 46:
+            userCmd("prev");
+            break;
+          case 33:
+            userCmd("prev");
+            break;
+          case 34:
+            userCmd("next");
+            break;
+          case 32:
+            userCmd("next");
+            break;
+          case 39:
+            userCmd("next");
+            break;
+          case 27:
+            userCmd("reset");
+            break;
+          case 36:
+            userCmd("reset");
+            break;
+          case 13:
+            userCmd("reset");
+            break;
+        }
+      };
+
+      // mobile screen swipe controls
+      document.addEventListener('touchstart', handleTouchStart, false);
+      document.addEventListener('touchmove', handleTouchMove, false);
+
+      var xDown = null;
+      var yDown = null;
+
+      function getTouches(evt) {
+        return evt.touches;
+      }
+
+      function handleTouchStart(evt) {
+        const firstTouch = getTouches(evt)[0];
+        xDown = firstTouch.clientX;
+        yDown = firstTouch.clientY;
+      }
+
+      function handleTouchMove(evt) {
+        if ( ! xDown || ! yDown ) {
+          return;
+        }
+
+        var xUp = evt.touches[0].clientX;
+        var yUp = evt.touches[0].clientY;
+
+        var xDiff = xDown - xUp;
+        var yDiff = yDown - yUp;
+      
+        if ( Math.abs( xDiff ) > Math.abs( yDiff ) ) {/*most significant*/
+          if ( xDiff > 0 ) {
+            userCmd("next");
+          } else {
+            userCmd("prev");
+          }
+        } else {
+          if ( yDiff > 0 ) {
+            userCmd("next");
+          } else {
+            userCmd("prev");
+          }
+        }
+        /* reset values */
+        xDown = null;
+        yDown = null;
+      }
+
+      //--------------------------------------------------------------------------------------------
+      // tutorial section
+      //--------------------------------------------------------------------------------------------
+
+      // mock sleep function for basic timed walk-through
+      function sleep(ms){
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+
+      // highlight controls
+      function mkbright(elem){
+        if ( document.getElementById(elem) ){
+          document.getElementById(elem).style.backgroundColor = "#FFFF55";
+        }
+        return;
+      }
+
+      // clear highlight
+      function mkclear(elem){
+        if ( document.getElementById(elem) ){
+          document.getElementById(elem).style.backgroundColor = "";
+        }
+        return;
+      }
+
+      // write text to tuorial section
+      function mktext(note){
+        var tutorial = "tutorial-text";
+        if ( document.getElementById(tutorial) ){
+          document.getElementById(tutorial).innerHTML = note;
+        }
+        return;
+      }
+
+      // append text to tuorial section
+      function adtext(note){
+        var tutorial = "tutorial-text";
+        if ( document.getElementById(tutorial) ){
+          document.getElementById(tutorial).innerHTML += note;
+        }
+        return;
+      }
+
+      // timed walkthrough of basic features
+      function showTutorial() {
+        
+        // first page
+        clearTutorial();
+        mktext('<h2>"Next" and "Previous" slide controls are located in the corners.</h2>');
+        mkbright("status-prev-a");
+        mkbright("status-next-a");
+        mkbright("ctl-prev-a");
+        mkbright("ctl-next-a");
+        sleep(3000).then(() => {
+          mkclear("status-prev-a");
+          mkclear("status-next-a");
+          mkclear("ctl-prev-a");
+          mkclear("ctl-next-a");
+          adtext("<h2>You can also use keyboard arrow keys or screen-swipe on mobile.</h2>");
+        });
+
+        // second page
+        sleep(10000).then(() => {
+          clearTutorial();
+          mktext("<h2>Automatic Presentation Mode can be paused or played from the menu.</h2>");
+          mkbright("play-stat");
+        });
+        sleep(14000).then(() => {
+          mkclear("play-stat");
+          adtext("<h2>Audio narration can be muted or played as well.</h2>");
+          mkbright("audio-stat");
+        });
+
+        // third page
+        sleep(20000).then(() => {
+          clearTutorial();
+          mktext("<h2>Table of Contents and Slide Notes can be accessed above.</h2>");
+          mkbright("ctl-notes-a");
+          mkbright("ctl-toc-a");
+        });
+        sleep(23000).then(() => {
+          mkclear("ctl-notes-a");
+          mkclear("ctl-toc-a");
+          adtext("<h2>You can hide the menu bar or download the deck as PDF below.</h2>");
+          mkbright("toggle-ctl");
+          mkbright("status-pdf-a");
+        });
+
+        // final page
+        sleep(30000).then(() => {
+          tutorialPrompt();
+        });
+
+        return;
+      }
+
+      function clearTutorial(){
+        var tutorial = document.getElementById("tutorial-text");
+        while(tutorial.firstChild){
+          tutorial.removeChild(tutorial.firstChild);
+        }
+        mkclear("status-prev-a");
+        mkclear("status-next-a");
+        mkclear("ctl-prev-a");
+        mkclear("ctl-next-a");
+        mkclear("play-stat");
+        mkclear("audio-stat");
+        mkclear("ctl-notes-a");
+        mkclear("ctl-toc-a");
+        mkclear("toggle-ctl");
+        mkclear("status-pdf-a");
+        return;
+      }
+
+      function tutorialPrompt(){
+        clearTutorial();
+        mktext('<h2><a name="play" onclick="skipTutorialAuto();" class="bso-tutorial-a">Start the show</a> in Automatic mode?</h2>');
+        adtext('<h2>Go through deck <a name="play" onclick="skipTutorialManual();" class="bso-tutorial-a">manually?</a></h2>');
+        adtext('<h2>Or take the <a name="play" onclick="showTutorial();" class="bso-tutorial-a">30 sec. tutorial?</a></h2>');
+        return;
+      }
+
+      function skipTutorialAuto(){
+        window.autoPlay = "on";
+        window.autoAudio = "on";
+        window.autoMovie = "on";
+        nextSlide();
+        return;
+      }
+
+      function skipTutorialManual(){
+        userCmd('next');
+        return;
+      }
+
+    </script>
+
+  </head>
+
+  <!------------------------------------------------------------------------------------------------
+    onLoad.startShow function needed for normal behaviour. If need to add onLoad features, add them
+    to the startShow function directly rather than replace onLoad call.
+  ------------------------------------------------------------------------------------------------->
+  <body onLoad="startShow();">
+
+
+    <!----------------------------------------------------------------------------------------------
+      These control panel sections should be edited with caution as they are updated dynamically
+      by javascript functions. 
+    ----------------------------------------------------------------------------------------------->
+
+    <!-- BEGIN TOC LEFT PANEL -->
+    <div id="toc" class="bso-toc">
+      <a href="javascript:void(0)" onclick="userCmd('toc');" class="bso-controls-a">&lt; hide</a><br>
+      <br>
+      <ul id="toc-list" style="list-style-type: none;"></ul>
+    </div>
+    <!-- END TOC LEFT PANEL -->
+
+
+    <!-- BEGIN NOTES RIGHT PANEL -->
+    <div id="notes" class="bso-notes">
+      <a href="javascript:void(0)" onclick="userCmd('notes');" class="bso-controls-a">hide &gt;</a><br>
+      <br>
+      <p id="notes-txt"></p>
+    </div>
+    <!-- END NOTES RIGHT PANEL -->
+
+
+    <!-- START BOTTOM STATUS BAR -->
+    <div id="status" class="bso-status">
+      <div class="bso-status-left" id="status-prev">
+        <a class="bso-status-a" name="prev" onclick="userCmd('prev');" id="status-prev-a">&lt;prev</a>
+      </div>
+      <div class="bso-status-center" id="status-ctls">
+        <a class="bso-status-a" name="ctl" onclick="userCmd('ctl');" id="toggle-ctl">hide menu</a>
+      </div>
+      <div class="bso-status-center" id="status-copy">
+        copyright 2020 You
+      </div>
+      <div class="bso-status-center" id="status-pdf">
+        <a class="bso-status-a" href="#" id="status-pdf-a">download</a>
+      </div>
+      <div class="bso-status-right" id="status-next">
+        <a class="bso-status-a" name="next" onclick="userCmd('next');" id="status-next-a">next&gt;</a>
+      </div>
+    </div>
+    <!-- END BOTTOM STATUS BAR -->
+
+
+    <!-- BEGIN SLIDE SHOW -->
+    <div class="bso-show" id="show">
+
+      <!-- BEGIN CONTROLS, shouldn"t need to edit these -->
+      <div class="bso-controls" id="controls">
+        <div class="bso-control-left" id="ctl-prev">
+          <a class="bso-controls-a" name="prev" onclick="userCmd('prev');"><img id="prev-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAeCAYAAAAsEj5rAAAA0UlEQVRIx+3UPUoDQRQA4C8+LQVJmcbGck+SQsGLCbmLtdgmRzB6AtNIGhF2bUZYQhJ3ZhZM4cCDmTfw8eaX8jbHEg+4Utl+sC7FEtMxsflYWDcmdrqV/WN/fJongjVN02E1VmXdTrzgthQ725O7wQQXxX9RWnI/nnFXheI+QVVo9PprbDDDdYoZ3vGGNhds8VqLxs64Go09uSo0DuSL0ThSfREav+xxNhoDbkIWGgPv6zF0k+baHHAIukYbmc/zELrFEz7PC978Fx5740ss8AHfFgGNNKPZz/YAAAAASUVORK5CYII=" height="20" width="14" border="0" alt="<" /></a>
+          <a class="bso-controls-a" name="prev" onclick="userCmd('prev');" id="ctl-prev-a">prev</a>
+        </div>
+        <div class="bso-control-center" id="ctl-toc">
+          <a class="bso-controls-a" name="toc" onclick="userCmd('toc');" id="ctl-toc-a">slides</a>
+          <a class="bso-controls-a" name="toc" onclick="userCmd('toc');"><img id="toc-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeAQMAAAAB/jzhAAAABlBMVEUAAAAAAAClZ7nPAAAAAXRSTlMAQObYZgAAABVJREFUCNdjYIAD+///PyARaICusgBvdC+kSD1UZgAAAABJRU5ErkJggg==" height="20" width="20" border="0" alt="ToC" /></a>
+        </div>
+        <div class="bso-control-center" id="ctl-play">
+          <a class="bso-controls-a" name="play" onclick="userCmd('play');"><span id="play-stat">playing</span></a>
+          <a class="bso-controls-a" name="play" onclick="userCmd('play');"><img id="play-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAeCAMAAAAIG46tAAAAZlBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBQUAAAAAAAAAAAAHBwcAAAAAAAABAQEAAAAAAAAAAAAAAAACAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEAAAAAAAADAwMAAAB0QIMsAAAAIXRSTlMAA/pV93i26wfOsh4K79K4ljk1Ihq4T+LaupmXk29fWyndVN8QAAAAvklEQVQoz5XT2RKCMAwF0FhEyi6yuC/5/580NMzc6WCt8pY5Qy6kKVHfE20o8Dzruw1ywpxPomAPDXNxAPs4q7kNwp+QecucpRXYQzbCeULojcxTLi9L8xbRwMKmmett9qWwjyNReTFeNHA3l91ZoxuNBmqZNBo9dq4Gul7VEs0aDVQeruyGUqdWSuDCr0L5+CBkOrMBXLX96YNa/1da/EpkCOvxRQcfPzIc9gRarQk2NL5g8dVE2F/X4etFegNJbRp4urdFvgAAAABJRU5ErkJggg==" height="20" width="20" border="0" alt="play" /></a>
+        </div>
+        <div class="bso-control-center" id="ctl-audio">
+          <a class="bso-controls-a" name="audio" onclick="userCmd('audio');"><span id="audio-stat">audible</span></a>
+          <a class="bso-controls-a" name="audio" onclick="userCmd('audio');"><img id="audio-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAeCAMAAACR41cYAAAAolBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgESU6AAAANXRSTlMABfsDfvcI8ePQHxju1XJlYgrbv7m1l4JaVUtFJBMM59/YybGto4d5XEE0Kw/FqJBrPZqZFWF77A8AAAF/SURBVDjLfZNpe4JADIQDW8D7RKsieN9Ha9v5/3+tE0Cp60PzhYW8zCbZWbHCEd/Jl1+9iRh5CWMkCtoEmawD6HBpIyKfwHue2BGKbIivQ7h448Joqg0ENTFWKSFcL2UYxFrAxVKpNeHlOpMWPxgZPJdk5NYgkjJSdxH6TE49LDJRY0hIR/M5020CfZXeqtCjpK2mc8aXuJn1VwvIEkq6XT++wiWSMw6nM4M3JbTR1kbzSqUyb6hIwVBpDHxnj5Es7qknhrFE5Sy62YdU4WrAYtLh3MQwv1IGjFfmkM1mgGUZY3Q2OxZ0RaOc0UrIDIFy5ohUZ4VZec3ses9HiEtZ7zo978RT6WGtM2RYM8yOc8kdTx62/OOcnJOftXUW0tcB++qzwtVvTBc6MZG1GHXQLC6cvLe80UvIHl1s/trwEMAtPFat65Yr4GB71X14VX2v2qFlaGfw7Pkj7X0SU3J3HG0tCgBeyP/uYAu6VhWbihrFXaakxivk3P8c9saZyi+SZ0pbsr0VLQAAAABJRU5ErkJggg==" height="20" width="23" border="0" alt="audio" /></a>
+        </div>
+         <div class="bso-control-center" id="ctl-notes">
+          <a class="bso-controls-a" name="notes" onclick="userCmd('notes');" id="ctl-notes-a">notes</a>
+          <a class="bso-controls-a" name="notes" onclick="userCmd('notes');"><img id="notes-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAcUlEQVQ4y82UOw7AIAxD8xD3v7K7oqrkU2hFJobIsZ1gzEy2sZptrj68WcTS5wwt8JNJDx4gjhxl7OlJJbzdspLyrcLwDoozgAiQhHda8ZCqn807UscGPbAP71DBEDKA1e/Hr+FQkTbd9th8ZtpwfGJfD0MeMNyBWE4AAAAASUVORK5CYII=" height="20" width="20" border="0" alt="notes" /></a>
+        </div>
+        <div class="bso-control-right" id="ctl-next">
+          <a class="bso-controls-a" name="next" onclick="userCmd('next');" id="ctl-next-a">next</a>
+          <a class="bso-controls-a" name="next" onclick="userCmd('next');"><img id="next-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAeCAYAAAAsEj5rAAAAz0lEQVRIx+3UQQqCQBTG8X+93Ea0dNMFbNE12tRJukqn6QBtDdq2qU6QdADJafOGZChzZoRA+uAx+sQfTxmFV+bAEdgDayAhICNdx8AGWDjXd0DpA4quD2AApMBMKwUK4AJUvmClNxaxqNSOLXqLQcU5r4BrDCpvelGofOgHo9IwfRAqX96xNyotdoIXKi33a2tUPL6qJvQOnAhMAqz0J2JsZVlmiIhFjVvDQLBU4ExHWQJ5bbJDzCO7WK69HmLmj/0Wy/s/2bRLzGYCbGOxJ4JPi3qYZCPFAAAAAElFTkSuQmCC" height="20" width="14" border="0" alt=">" /></a>
+        </div>
+      </div>
+      <!-- END CONTROLS -->
+
+
+      <!-- BEGIN DECK -->
+      <div class="bso-deck" id="deck">
+
+        <!------------------------------------------------------------------------------------------
+          This is the section where slides are inserted into the deck. The first slide, "slide0", is
+          a user guide showing how to interact with the presentation.  It is best to leave that
+          slide for your audience, but it can be hidden or replaced if desired.
+        ------------------------------------------------------------------------------------------->
+
+        <!-- BEGIN USER GUIDE -->
+        <div class="bso-slide" id="slide0" title="Presentation Controls" data-timer="1">
+          <h1>Welcome!</h1>
+          <div id="tutorial-text">
+          </div>
+          <p id="slide0-notes" style="display: none;">
+            This notes sidebar can contain text,
+            <a href="#">links</a>, or even images<br>
+            <br>
+            These notes are per-slide and often contain reference data or expansion information on
+            the slide itself.
+          </p>
+        </div>
+        <!-- END USER GUIDE -->
+
+
+        <!------------------------------------------------------------------------------------------
+           The "class" and "id" attributes are required. "id" should start with "slide" followed by
+           its sequence number (i.e. slide1, slide2, etc.). "title" is optional and will be used to
+           update the browsers title bar and for the Table of Contents side bar navigation.  If no
+           "title" is provided, it will instead use the value from "id". "data-timer" tells the 
+           AutoPlay function how long, in seconds, to show the slide before going to the next in the
+           deck. Each slide can have a different time set, but if no "data-timer" is provided, the
+           config default is used. If there is an audio track that accompanies the slide it should 
+           be placed in an "audio" element inside the "slide" div it is associated with. It should
+           have an "id" that starts with the slide "id", followed by "-audio" (i.e. "slide1-audio").
+           Any notes for the slide should be conatined in a hidden element inside the "slide" div.
+           The notes element should have an "id" that starts with the slide "id", followed by 
+           "-notes" (i.e. "slide2-notes").  The content of this hidden element will be show in the
+           left "notes" side panel for each slide. The presentation contents of the "slide" can be
+           an image of the slide as exported by PowerPoint, a movie, or your own HTML content. If
+           autoAudio or autoMovie are enabled (by config default or toggled by user) any audio or
+           movie content will be played automatically when the slide is displayed.
+        ------------------------------------------------------------------------------------------->
+
+        <!--BEGIN USER SLIDE SECTION -------------------------------------------------------------->
+
+
+        <!-- BEGIN EXAMPLE SLIDE 1 -->
+        <div class="bso-slide" id="slide1" title="First Example" data-timer="3">
+          <h1>First Slide Example</h1>
+          Your text or content would go in this div.
+        </div>
+        <!-- END EXAMPLE SLIDE 1 -->
+
+
+        <!-- BEGIN EXAMPLE SLIDE 2 -->
+        <div class="bso-slide" id="slide2" title="Second Example" data-timer="5">
+          <h1>Second Slide Example</h1>
+          This slide displays a bit longer on AutoPlay due to timer setting.
+          <p id="slide0-notes" style="display: none;">
+            It also has some notes attached.
+          </p>
+        </div>
+        <!-- END EXAMPLE SLIDE 2 -->
+
+
+        <!-- END USER SLIDE SECTION --------------------------------------------------------------->
+        
+      </div>
+      <!-- END DECK -->
+
+    </div>
+    <!-- END SLIDE SHOW -->
+
+  </body>
+</html>
